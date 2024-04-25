@@ -17,7 +17,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Order> orders = [];
+  int vipOrderCount = 0;
+  final List<Order> pendingOrders = [];
+  final List<Order> completeOrders = [];
   final List<Bot> bots = [];
   Timer? assignOrderTimer;
 
@@ -25,7 +27,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    assignOrderTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+    assignOrderTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       assignOrder();
     });
   }
@@ -37,14 +39,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   void assignOrder() {
-    final unassignedOrders = orders
-        .where((order) => order.botId == null && !order.hasCompleted)
-        .toList();
+    final unassignedOrders =
+        pendingOrders.where((order) => order.botId == null).toList();
 
     if (unassignedOrders.isEmpty) return;
 
     final unassignedBots =
         bots.where((bot) => bot.orderProcessTimer == null).toList();
+
+    if (unassignedBots.isEmpty) return;
 
     while (unassignedOrders.isNotEmpty && unassignedBots.isNotEmpty) {
       final bot = unassignedBots.removeAt(0);
@@ -52,31 +55,41 @@ class _HomePageState extends State<HomePage> {
 
       order.botId = bot.id;
 
-      bot.orderProcessTimer = Timer(const Duration(seconds: 10), () {
-        order.hasCompleted = true;
-        order.botId = null;
-        bot.orderProcessTimer = null;
-      });
+      bot.orderProcessTimer =
+          Timer(const Duration(seconds: 10), () => completeOrder(order, bot));
+    }
+
+    setState(() {});
+  }
+
+  void completeOrder(Order order, Bot bot) {
+    pendingOrders.removeWhere((pendingOrder) => pendingOrder.id == order.id);
+    completeOrders.add(order);
+
+    order.hasCompleted = true;
+    bot.orderProcessTimer = null;
+
+    if (order.isVip) {
+      vipOrderCount--;
     }
 
     setState(() {});
   }
 
   void addOrder(bool isVip) {
-    orders.add(Order(id: orders.length + 1, isVip: isVip));
+    final order = Order(id: pendingOrders.length + 1, isVip: isVip);
 
-    orders.sort((a, b) {
-      if (a.isVip && !b.isVip) return -1;
-      if (!a.isVip && b.isVip) return 1;
-
-      return a.id.compareTo(b.id);
-    });
+    final index = isVip ? vipOrderCount++ : pendingOrders.length;
+    pendingOrders.insert(index, order);
 
     setState(() {});
   }
 
   void addBot() {
-    bots.add(Bot(id: bots.length + 1));
+    final bot = Bot(id: bots.length + 1);
+
+    bots.add(bot);
+
     setState(() {});
   }
 
@@ -84,7 +97,7 @@ class _HomePageState extends State<HomePage> {
     final lastBots = bots.removeLast();
     lastBots.orderProcessTimer?.cancel();
 
-    final order = orders.firstWhereOrNull(
+    final order = pendingOrders.firstWhereOrNull(
       (order) => order.botId == lastBots.id,
     );
 
@@ -97,9 +110,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final pendingOrders = orders.where((order) => !order.hasCompleted).toList();
-    final completeOrders = orders.where((order) => order.hasCompleted).toList();
-
     return DefaultTabController(
       length: 2,
       child: Scaffold(

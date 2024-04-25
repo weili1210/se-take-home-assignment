@@ -20,11 +20,17 @@ class OrderList extends StatelessWidget {
 
         final double bottomPadding = index == ordersLength - 1 ? 15 : 0;
         final prefixText = order.isVip ? '(VIP) ' : '';
-        final postfixText = order.botId != null ? ' (Processing by bot ${order.botId})' : '';
+        final processText = order.hasCompleted ? 'Completed' : 'Processing';
+        final postfixText =
+            order.botId != null ? ' ($processText by bot ${order.botId})' : '';
 
         return Container(
           margin: EdgeInsets.only(
-              top: 15, bottom: bottomPadding, left: 20, right: 20),
+            bottom: bottomPadding,
+            top: 15,
+            left: 20,
+            right: 20,
+          ),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(5),
