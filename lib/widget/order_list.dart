@@ -14,6 +14,12 @@ class OrderList extends StatelessWidget {
   Widget build(BuildContext context) {
     final ordersLength = orders.length;
 
+    if (ordersLength == 0) {
+      return const Center(
+        child: Text('No Orders'),
+      );
+    }
+
     return ListView.builder(
       itemBuilder: (BuildContext _, int index) {
         final order = orders[index];

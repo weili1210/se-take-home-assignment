@@ -21,66 +21,15 @@ class _HomePageState extends State<HomePage> {
   final List<Order> pendingOrders = [];
   final List<Order> completeOrders = [];
   final List<Bot> bots = [];
-  Timer? assignOrderTimer;
-
-  @override
-  void initState() {
-    super.initState();
-
-    assignOrderTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      assignOrder();
-    });
-  }
-
-  @override
-  void dispose() {
-    assignOrderTimer?.cancel();
-    super.dispose();
-  }
-
-  void assignOrder() {
-    final unassignedOrders =
-        pendingOrders.where((order) => order.botId == null).toList();
-
-    if (unassignedOrders.isEmpty) return;
-
-    final unassignedBots =
-        bots.where((bot) => bot.orderProcessTimer == null).toList();
-
-    if (unassignedBots.isEmpty) return;
-
-    while (unassignedOrders.isNotEmpty && unassignedBots.isNotEmpty) {
-      final bot = unassignedBots.removeAt(0);
-      final order = unassignedOrders.removeAt(0);
-
-      order.botId = bot.id;
-
-      bot.orderProcessTimer =
-          Timer(const Duration(seconds: 10), () => completeOrder(order, bot));
-    }
-
-    setState(() {});
-  }
-
-  void completeOrder(Order order, Bot bot) {
-    pendingOrders.removeWhere((pendingOrder) => pendingOrder.id == order.id);
-    completeOrders.add(order);
-
-    order.hasCompleted = true;
-    bot.orderProcessTimer = null;
-
-    if (order.isVip) {
-      vipOrderCount--;
-    }
-
-    setState(() {});
-  }
 
   void addOrder(bool isVip) {
-    final order = Order(id: pendingOrders.length + 1, isVip: isVip);
+    final order = Order(
+        id: pendingOrders.length + completeOrders.length + 1, isVip: isVip);
 
     final index = isVip ? vipOrderCount++ : pendingOrders.length;
     pendingOrders.insert(index, order);
+
+    checkPendingOrder();
 
     setState(() {});
   }
@@ -89,6 +38,8 @@ class _HomePageState extends State<HomePage> {
     final bot = Bot(id: bots.length + 1);
 
     bots.add(bot);
+
+    checkPendingOrder();
 
     setState(() {});
   }
@@ -105,7 +56,43 @@ class _HomePageState extends State<HomePage> {
       order.botId = null;
     }
 
+    // handle situation where the last bot is processing an order and all other bot when idle
+    // when the last bot is removed other bot wouldn't jump on to the order automatically
+    checkPendingOrder();
+
     setState(() {});
+  }
+
+  void assignOrder(Order order, Bot bot) {
+    order.botId = bot.id;
+
+    bot.orderProcessTimer = Timer(const Duration(seconds: 10), () {
+      pendingOrders.removeWhere((pendingOrder) => pendingOrder.id == order.id);
+      completeOrders.add(order);
+
+      order.hasCompleted = true;
+      bot.orderProcessTimer = null;
+
+      if (order.isVip) {
+        vipOrderCount--;
+      }
+
+      setState(() {});
+
+      checkPendingOrder();
+    });
+  }
+
+  void checkPendingOrder() {
+    if (pendingOrders.isEmpty || bots.isEmpty) return;
+
+    final unassignedOrder =
+        pendingOrders.firstWhereOrNull((order) => order.botId == null);
+    final unassignedBot =
+        bots.firstWhereOrNull((bot) => bot.orderProcessTimer == null);
+
+    if (unassignedOrder == null || unassignedBot == null) return;
+    assignOrder(unassignedOrder, unassignedBot);
   }
 
   @override
@@ -172,7 +159,6 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
             ],
           )),
     );
