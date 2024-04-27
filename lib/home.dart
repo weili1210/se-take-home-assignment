@@ -24,7 +24,9 @@ class _HomePageState extends State<HomePage> {
 
   void addOrder(bool isVip) {
     final order = Order(
-        id: pendingOrders.length + completeOrders.length + 1, isVip: isVip);
+      id: pendingOrders.length + completeOrders.length + 1,
+      isVip: isVip,
+    );
 
     final index = isVip ? vipOrderCount++ : pendingOrders.length;
     pendingOrders.insert(index, order);
