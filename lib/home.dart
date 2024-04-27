@@ -92,6 +92,7 @@ class _HomePageState extends State<HomePage> {
         bots.firstWhereOrNull((bot) => bot.orderProcessTimer == null);
 
     if (unassignedOrder == null || unassignedBot == null) return;
+
     assignOrder(unassignedOrder, unassignedBot);
   }
 
